@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Discord Tools — Install Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f1012;
+      --surface:  #1a1b1e;
+      --card:     #1e1f23;
+      --border:   #2a2b30;
+      --blurple:  #5865f2;
+      --blurple2: #4752c4;
+      --green:    #3ba55d;
+      --text:     #f2f3f5;
+      --muted:    #8e9297;
+      --glow:     rgba(88,101,242,0.22);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+
+    /* ── background grid ── */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(88,101,242,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(88,101,242,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo {
+      width: 64px;
+      height: 64px;
+      background: var(--blurple);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      box-shadow: 0 0 32px var(--glow);
+      font-size: 30px;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+
+    header p {
+      font-size: 14px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* ── main counter card ── */
+    .main-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 64px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04) inset;
+      margin-bottom: 24px;
+      min-width: 360px;
+    }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .count-wrap {
+      position: relative;
+      display: inline-block;
+    }
+
+    .count {
+      font-size: 96px;
+      font-weight: 800;
+      letter-spacing: -4px;
+      line-height: 1;
+      background: linear-gradient(135deg, var(--text) 0%, var(--blurple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    .count.bump {
+      transform: scale(1.06);
+    }
+
+    /* ripple ring on increment */
+    .ring {
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      border: 2px solid var(--blurple);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .ring.fire {
+      animation: ring-out 0.6s ease-out forwards;
+    }
+
+    @keyframes ring-out {
+      0%   { transform: scale(0.85); opacity: 0.8; }
+      100% { transform: scale(1.5);  opacity: 0; }
+    }
+
+    .count-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 14px;
+    }
+
+    /* ── live dot ── */
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(59,165,93,0.12);
+      border: 1px solid rgba(59,165,93,0.3);
+      border-radius: 99px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--green);
+      margin-top: 24px;
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse-dot 1.6s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* ── stats row ── */
+    .stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .stat-card {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      min-width: 160px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* ── connection status bar ── */
+    .status-bar {
+      position: relative;
+      z-index: 1;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    .status-bar span.ok  { color: var(--green); }
+    .status-bar span.err { color: #ed4245; }
+
+    /* ── flash highlight on new install ── */
+    @keyframes flash-card {
+      0%   { box-shadow: 0 8px 40px rgba(0,0,0,0.4), 0 0 24px var(--glow), 0 0 0 1px rgba(255,255,255,0.04) inset; }
+      50%  { box-shadow: 0 8px 40px rgba(0,0,0,0.4), 0 0 48px var(--blurple), 0 0 0 1px rgba(255,255,255,0.08) inset; }
+      100% { box-shadow: 0 8px 40px rgba(0,0,0,0.4), 0 0 24px var(--glow), 0 0 0 1px rgba(255,255,255,0.04) inset; }
+    }
+
+    .main-card.flash {
+      animation: flash-card 0.5s ease;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">📲</div>
+    <h1>Discord Tools</h1>
+    <p>Real-time app installation tracker</p>
+  </header>
+
+  <div class="main-card" id="mainCard">
+    <div class="card-label">Total Installs</div>
+    <div class="count-wrap">
+      <div class="ring" id="ring"></div>
+      <div class="count" id="count">—</div>
+    </div>
+    <div class="count-sub" id="countSub">Loading...</div>
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      Live · updates automatically
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">First Install</div>
+      <div class="stat-value" id="firstSeen">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Last Install</div>
+      <div class="stat-value" id="lastSeen">—</div>
+    </div>
+  </div>
+
+  <div class="status-bar" id="statusBar">Connecting…</div>
+
+  <script>
+    const countEl   = document.getElementById("count");
+    const countSub  = document.getElementById("countSub");
+    const firstEl   = document.getElementById("firstSeen");
+    const lastEl    = document.getElementById("lastSeen");
+    const ring      = document.getElementById("ring");
+    const mainCard  = document.getElementById("mainCard");
+    const statusBar = document.getElementById("statusBar");
+
+    let currentCount = null;
+
+    function fmtDate(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+             + " " + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function animateCount(newCount) {
+      const isFirstLoad = currentCount === null;
+      const increased   = currentCount !== null && newCount > currentCount;
+      currentCount = newCount;
+
+      countEl.textContent = newCount.toLocaleString();
+      countSub.textContent = newCount === 1 ? "1 person has installed" : `${newCount.toLocaleString()} people have installed`;
+
+      if (!isFirstLoad && increased) {
+        countEl.classList.add("bump");
+        setTimeout(() => countEl.classList.remove("bump"), 300);
+
+        ring.classList.remove("fire");
+        void ring.offsetWidth;
+        ring.classList.add("fire");
+
+        mainCard.classList.remove("flash");
+        void mainCard.offsetWidth;
+        mainCard.classList.add("flash");
+      }
+    }
+
+    function render(data) {
+      animateCount(data.count ?? 0);
+      firstEl.textContent = fmtDate(data.firstSeen);
+      lastEl.textContent  = fmtDate(data.lastSeen);
+    }
+
+    function connect() {
+      const es = new EventSource("/events");
+
+      es.onopen = () => {
+        statusBar.innerHTML = '<span class="ok">● Connected</span> — real-time stream active';
+      };
+
+      es.onmessage = (e) => {
+        try { render(JSON.parse(e.data)); } catch {}
+      };
+
+      es.onerror = () => {
+        statusBar.innerHTML = '<span class="err">● Disconnected</span> — retrying…';
+        es.close();
+        setTimeout(connect, 3000);
+      };
+    }
+
+    connect();
+  </script>
+</body>
+</html>
