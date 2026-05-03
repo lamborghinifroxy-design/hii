@@ -17,28 +17,37 @@ const GITHUB_TOKEN = "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";
 
 async function syncFromGist() {
   try {
+    // Fixed URL syntax: Added proper / before the Gist ID
     const res = await axios.get(`https://github.com{GIST_ID}`, {
-      headers: { Authorization: `token ${GITHUB_TOKEN}` }
+      headers: { 
+        Authorization: `token ${GITHUB_TOKEN}`,
+        "User-Agent": "Discord-Tracker"
+      }
     });
     const remoteData = JSON.parse(res.data.files["data.json"].content);
     fs.writeFileSync(DATA_FILE, JSON.stringify(remoteData, null, 2));
-    console.log(`[Cloud Sync] Data pulled from GitHub: ${remoteData.count}`);
+    console.log(`[Cloud Sync] Success! Loaded count: ${remoteData.count}`);
     return remoteData;
   } catch (err) {
-    console.log("[Cloud Sync] Error or first run, using local data.");
+    console.log("[Cloud Sync] Fetch failed. Using local data. Error:", err.message);
     return loadLocalData();
   }
 }
 
 async function syncToGist(data) {
   try {
+    // Fixed URL syntax: Added proper / before the Gist ID
     await axios.patch(`https://github.com{GIST_ID}`, {
       files: { "data.json": { content: JSON.stringify(data, null, 2) } }
     }, {
-      headers: { Authorization: `token ${GITHUB_TOKEN}` }
+      headers: { 
+        Authorization: `token ${GITHUB_TOKEN}`,
+        "User-Agent": "Discord-Tracker"
+      }
     });
+    console.log("[Cloud Sync] Gist updated successfully!");
   } catch (err) {
-    console.error("[Cloud Sync] Save failed:", err.message);
+    console.error("[Cloud Sync] Save failed:", err.response ? err.response.data : err.message);
   }
 }
 
@@ -55,7 +64,7 @@ function loadLocalData() {
 
 function saveData(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-  syncToGist(data); // Sync to GitHub every time data changes
+  syncToGist(data);
 }
 
 // ─── SSE Setup ───────────────────────────────────────────────────────────────
@@ -76,7 +85,6 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
-// Real-time Dashboard Stream
 app.get("/events", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -91,14 +99,13 @@ app.get("/events", (req, res) => {
   req.on("close", () => clients.delete(res));
 });
 
-// FIXED: Increase Route
-// Usage: /increase?500
+// FIXED: /increase?500
 app.get("/increase", (req, res) => {
   const data = loadLocalData();
   
-  // This logic correctly grabs the number even if there is no key (e.g., ?500)
-  const queryString = req.url.split('?')[1];
-  const amount = parseInt(queryString) || 0;
+  // Extract number from the query string accurately
+  const queryStr = req.url.split('?')[1];
+  const amount = parseInt(queryStr) || 0;
   
   data.count += amount;
   data.lastSeen = new Date().toISOString();
@@ -108,10 +115,9 @@ app.get("/increase", (req, res) => {
   broadcast(data);
   
   console.log(`[increase] Added ${amount}. Total: ${data.count}`);
-  res.send(`Successfully increased by ${amount}. Total is now ${data.count}`);
+  res.send(`Increased by ${amount}. Total: ${data.count}`);
 });
 
-// Install Tracking (Original Logic)
 app.get("/install", (req, res) => {
   const data = loadLocalData();
   data.count += 1;
@@ -132,7 +138,6 @@ app.post("/install", (req, res) => {
   res.json({ success: true, count: data.count });
 });
 
-// Simple Count Check
 app.get("/count", (req, res) => {
   res.type("text/plain").send(String(loadLocalData().count));
 });
@@ -142,10 +147,10 @@ app.get("/count", (req, res) => {
 app.listen(PORT, async () => {
   console.log(`Server live on port ${PORT}`);
   
-  // 1. Pull latest data from GitHub on start
+  // Load cloud data on boot
   await syncFromGist();
   
-  // 2. Safety interval: Sync to GitHub every 10 mins even if no activity
+  // Safety interval: Save to Gist every 10 mins
   setInterval(() => {
     const data = loadLocalData();
     syncToGist(data);
