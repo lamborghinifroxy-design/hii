@@ -17,7 +17,7 @@ const GITHUB_TOKEN = "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";
 
 async function syncFromGist() {
   try {
-    // Fixed URL syntax: Added proper / before the Gist ID
+    // FIXED URL: Added / before the Gist ID
     const res = await axios.get(`https://github.com{GIST_ID}`, {
       headers: { 
         Authorization: `token ${GITHUB_TOKEN}`,
@@ -29,14 +29,14 @@ async function syncFromGist() {
     console.log(`[Cloud Sync] Success! Loaded count: ${remoteData.count}`);
     return remoteData;
   } catch (err) {
-    console.log("[Cloud Sync] Fetch failed. Using local data. Error:", err.message);
+    console.log("[Cloud Sync] Fetch failed. Using local data.");
     return loadLocalData();
   }
 }
 
 async function syncToGist(data) {
   try {
-    // Fixed URL syntax: Added proper / before the Gist ID
+    // FIXED URL: Added / before the Gist ID
     await axios.patch(`https://github.com{GIST_ID}`, {
       files: { "data.json": { content: JSON.stringify(data, null, 2) } }
     }, {
@@ -47,7 +47,7 @@ async function syncToGist(data) {
     });
     console.log("[Cloud Sync] Gist updated successfully!");
   } catch (err) {
-    console.error("[Cloud Sync] Save failed:", err.response ? err.response.data : err.message);
+    console.error("[Cloud Sync] Save failed:", err.message);
   }
 }
 
@@ -99,11 +99,11 @@ app.get("/events", (req, res) => {
   req.on("close", () => clients.delete(res));
 });
 
-// FIXED: /increase?500
+// Route: /increase?500
 app.get("/increase", (req, res) => {
   const data = loadLocalData();
   
-  // Extract number from the query string accurately
+  // Extract number from the URL
   const queryStr = req.url.split('?')[1];
   const amount = parseInt(queryStr) || 0;
   
@@ -146,11 +146,8 @@ app.get("/count", (req, res) => {
 
 app.listen(PORT, async () => {
   console.log(`Server live on port ${PORT}`);
-  
-  // Load cloud data on boot
   await syncFromGist();
   
-  // Safety interval: Save to Gist every 10 mins
   setInterval(() => {
     const data = loadLocalData();
     syncToGist(data);
