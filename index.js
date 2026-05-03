@@ -9,36 +9,42 @@ const PORT = process.env.PORT || 80;
 const DATA_FILE = path.join(__dirname, "data.json");
 
 // --- CONFIGURATION ---
-// I am putting these directly into the URLs below to prevent the ENOTFOUND error.
-const GITHUB_TOKEN = "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";
+const GITHUB_TOKEN = "ghp_XdpOkFIopQdxqNxatc7Xwhmlm3P8Et31AOWw";
 const GIST_ID = "f926fbfffef9da78a46a62057b02404d";
 // ---------------------
 
 async function syncFromGist() {
   try {
-    const res = await axios.get("https://github.com", {
-      headers: { Authorization: `token ${GITHUB_TOKEN}` }
+    const res = await axios.get(`https://github.com{GIST_ID}`, {
+      headers: { 
+        Authorization: `token ${GITHUB_TOKEN}`,
+        "User-Agent": "Discord-Tracker"
+      }
     });
     const remoteData = JSON.parse(res.data.files["data.json"].content);
     fs.writeFileSync(DATA_FILE, JSON.stringify(remoteData, null, 2));
-    console.log("[Cloud Sync] Success! Data loaded.");
+    console.log("[Cloud Sync] Success! Data loaded from Gist.");
     return remoteData;
   } catch (err) {
-    console.log("[Cloud Sync] Fetch failed. Check token permissions.");
+    console.log("[Cloud Sync] Fetch failed. Check if Gist is Public and Token has 'gist' scope.");
     return loadLocalData();
   }
 }
 
 async function syncToGist(data) {
   try {
-    await axios.patch("https://github.com", {
+    await axios.patch(`https://github.com{GIST_ID}`, {
       files: { "data.json": { content: JSON.stringify(data, null, 2) } }
     }, {
-      headers: { Authorization: `token ${GITHUB_TOKEN}` }
+      headers: { 
+        Authorization: `token ${GITHUB_TOKEN}`,
+        "User-Agent": "Discord-Tracker",
+        "Accept": "application/vnd.github+json"
+      }
     });
     console.log("[Cloud Sync] Gist updated successfully!");
   } catch (err) {
-    console.error("[Cloud Sync] Save failed:", err.message);
+    console.error("[Cloud Sync] Save failed. Status:", err.response ? err.response.status : err.message);
   }
 }
 
@@ -47,7 +53,7 @@ function loadLocalData() {
     if (fs.existsSync(DATA_FILE)) {
       return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
     }
-  } catch (err) { console.error(err); }
+  } catch (err) { }
   return { count: 0, firstSeen: null, lastSeen: null };
 }
 
@@ -76,7 +82,7 @@ app.get("/events", (req, res) => {
   req.on("close", () => clients.delete(res));
 });
 
-// FIXED: /increase?500
+// Route: /increase?500
 app.get("/increase", (req, res) => {
   const data = loadLocalData();
   const amount = parseInt(req.url.split("?")[1]) || 0;
