@@ -10,12 +10,12 @@ const DATA_FILE = path.join(__dirname, "data.json");
 
 // --- CONFIGURATION ---
 const GITHUB_TOKEN = "ghp_XdpOkFIopQdxqNxatc7Xwhmlm3P8Et31AOWw";
-const GIST_ID = "f926fbfffef9da78a46a62057b02404d";
 // ---------------------
 
 async function syncFromGist() {
   try {
-    const res = await axios.get(`https://github.com{GIST_ID}`, {
+    // Hardcoded URL to prevent ENOTFOUND errors
+    const res = await axios.get("https://github.com", {
       headers: { 
         Authorization: `token ${GITHUB_TOKEN}`,
         "User-Agent": "Discord-Tracker"
@@ -23,17 +23,18 @@ async function syncFromGist() {
     });
     const remoteData = JSON.parse(res.data.files["data.json"].content);
     fs.writeFileSync(DATA_FILE, JSON.stringify(remoteData, null, 2));
-    console.log("[Cloud Sync] Success! Data loaded from Gist.");
+    console.log("[Cloud Sync] Success! Data loaded.");
     return remoteData;
   } catch (err) {
-    console.log("[Cloud Sync] Fetch failed. Check if Gist is Public and Token has 'gist' scope.");
+    console.log("[Cloud Sync] Fetch failed. Check if Gist is Public and Token is valid.");
     return loadLocalData();
   }
 }
 
 async function syncToGist(data) {
   try {
-    await axios.patch(`https://github.com{GIST_ID}`, {
+    // Hardcoded URL to prevent ENOTFOUND errors
+    await axios.patch("https://github.com", {
       files: { "data.json": { content: JSON.stringify(data, null, 2) } }
     }, {
       headers: { 
@@ -85,7 +86,9 @@ app.get("/events", (req, res) => {
 // Route: /increase?500
 app.get("/increase", (req, res) => {
   const data = loadLocalData();
-  const amount = parseInt(req.url.split("?")[1]) || 0;
+  // Fixed parsing to handle /increase?500 correctly
+  const parts = req.url.split('?');
+  const amount = parts.length > 1 ? parseInt(parts[1]) : 0;
   
   data.count += amount;
   data.lastSeen = new Date().toISOString();
