@@ -17,11 +17,12 @@ const GITHUB_TOKEN = "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";
 
 async function syncFromGist() {
   try {
-    // FIXED URL: Added / before the Gist ID
-    const res = await axios.get(`https://github.com{GIST_ID}`, {
+    const res = await axios({
+      method: 'get',
+      url: `https://github.com{GIST_ID}`, // Correct template literal
       headers: { 
-        Authorization: `token ${GITHUB_TOKEN}`,
-        "User-Agent": "Discord-Tracker"
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'User-Agent': 'Discord-Tracker'
       }
     });
     const remoteData = JSON.parse(res.data.files["data.json"].content);
@@ -29,20 +30,23 @@ async function syncFromGist() {
     console.log(`[Cloud Sync] Success! Loaded count: ${remoteData.count}`);
     return remoteData;
   } catch (err) {
-    console.log("[Cloud Sync] Fetch failed. Using local data.");
+    console.log("[Cloud Sync] Fetch failed. Check your Token or Gist ID.");
     return loadLocalData();
   }
 }
 
 async function syncToGist(data) {
   try {
-    // FIXED URL: Added / before the Gist ID
-    await axios.patch(`https://github.com{GIST_ID}`, {
-      files: { "data.json": { content: JSON.stringify(data, null, 2) } }
-    }, {
+    await axios({
+      method: 'patch',
+      url: `https://github.com{GIST_ID}`, // Correct template literal
+      data: {
+        files: { "data.json": { content: JSON.stringify(data, null, 2) } }
+      },
       headers: { 
-        Authorization: `token ${GITHUB_TOKEN}`,
-        "User-Agent": "Discord-Tracker"
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'User-Agent': 'Discord-Tracker',
+        'Content-Type': 'application/json'
       }
     });
     console.log("[Cloud Sync] Gist updated successfully!");
@@ -91,19 +95,15 @@ app.get("/events", (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.flushHeaders();
-
   const current = loadLocalData();
   res.write(`data: ${JSON.stringify(current)}\n\n`);
-
   clients.add(res);
   req.on("close", () => clients.delete(res));
 });
 
-// Route: /increase?500
+// FIXED: /increase?500
 app.get("/increase", (req, res) => {
   const data = loadLocalData();
-  
-  // Extract number from the URL
   const queryStr = req.url.split('?')[1];
   const amount = parseInt(queryStr) || 0;
   
@@ -147,7 +147,6 @@ app.get("/count", (req, res) => {
 app.listen(PORT, async () => {
   console.log(`Server live on port ${PORT}`);
   await syncFromGist();
-  
   setInterval(() => {
     const data = loadLocalData();
     syncToGist(data);
